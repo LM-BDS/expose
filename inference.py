@@ -108,7 +108,6 @@ def undo_img_normalization(image, mean, std, add_alpha=True):
 @torch.no_grad()
 def main(
     exp_cfg,
-    show=False,
     demo_output_folder='demo_output',
     pause=-1,
     focal_length=5000, sensor_width=36,
@@ -155,7 +154,7 @@ def main(
     means = np.array(exp_cfg.datasets.body.transforms.mean)
     std = np.array(exp_cfg.datasets.body.transforms.std)
 
-    render = save_vis or show
+    render = save_vis
     body_crop_size = exp_cfg.get('datasets', {}).get('body', {}).get(
         'transforms').get('crop_size', 256)
     if render:
@@ -341,32 +340,6 @@ def main(
                         out_params[key] = val[idx]
                 np.savez_compressed(params_fname, **out_params)
 
-            if show:
-                nrows = 1
-                ncols = 4 + len(degrees)
-                fig, axes = plt.subplots(
-                    ncols=ncols, nrows=nrows, num=0,
-                    gridspec_kw={'wspace': 0, 'hspace': 0})
-                axes = axes.reshape(nrows, ncols)
-                for ax in axes.flatten():
-                    ax.clear()
-                    ax.set_axis_off()
-
-                axes[0, 0].imshow(hd_imgs[idx])
-                axes[0, 1].imshow(out_img['rgb'][idx])
-                axes[0, 2].imshow(out_img['hd_orig_overlay'][idx])
-                axes[0, 3].imshow(out_img['hd_overlay'][idx])
-                start = 4
-                for deg in degrees:
-                    axes[0, start].imshow(
-                        out_img[f'hd_rendering_{deg:03.0f}'][idx])
-                    start += 1
-
-                plt.draw()
-                if pause > 0:
-                    plt.pause(pause)
-                else:
-                    plt.show()
 
     logger.info(f'Average inference time: {total_time / cnt}')
 
@@ -389,9 +362,6 @@ if __name__ == '__main__':
     parser.add_argument('--datasets', nargs='+',
                         default=['openpose'], type=str,
                         help='Datasets to process')
-    parser.add_argument('--show', default=False,
-                        type=lambda arg: arg.lower() in ['true'],
-                        help='Display the results')
     parser.add_argument('--pause', default=-1, type=float,
                         help='How much to pause the display')
     parser.add_argument('--exp-opts', default=[], dest='exp_opts',
@@ -413,7 +383,6 @@ if __name__ == '__main__':
 
     cmd_args = parser.parse_args()
 
-    show = cmd_args.show
     output_folder = cmd_args.output_folder
     pause = cmd_args.pause
     focal_length = cmd_args.focal_length
@@ -431,7 +400,9 @@ if __name__ == '__main__':
     set_face_contour(cfg, use_face_contour=use_face_contour)
 
     with threadpool_limits(limits=1):
-        main(cfg, show=show, demo_output_folder=output_folder, pause=pause,
+        main(cfg,
+             demo_output_folder=output_folder,
+             pause=pause,
              focal_length=focal_length,
              save_vis=save_vis,
              save_mesh=save_mesh,
